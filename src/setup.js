@@ -140,7 +140,7 @@ export async function runSetup(env, guildId) {
         color: 0xd6ff4a,
         title: "Verify to enter Yoru AI",
         description:
-          "Press **Verify** for the Member role.\nPress **Yoru User** for Member plus Yoru User.\nBy verifying you agree to the server rules and Discord's Terms of Service.",
+          "Press **Verify** to get the Member role and unlock the server.\nBy verifying you agree to the server rules and Discord's Terms of Service.",
         footer: { text: "Ty Bot" },
       },
     ],
@@ -149,7 +149,6 @@ export async function runSetup(env, guildId) {
         type: 1,
         components: [
           { type: 2, style: 3, label: "Verify", custom_id: "verify_member" },
-          { type: 2, style: 1, label: "Yoru User", custom_id: "verify_yoru" },
         ],
       },
     ],
