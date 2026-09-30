@@ -223,6 +223,7 @@ function ow(id, allow, deny, type = 0) {
 }
 
 const STAFF_NAMES = new Set(["owner", "head admin", "admin", "moderator", "support team", "staff", "youtube moderator"]);
+const ADMIN_NAMES = new Set(["owner", "head admin", "admin"]);
 const OPEN_NAMES = new Set(["rules", "verify"]);
 
 export async function lockUnverified(env, guildId) {
@@ -265,8 +266,16 @@ export async function lockUnverified(env, guildId) {
         staffOnly ? bits(P.VIEW) : bits(),
       );
     }
+    const logsOnly = channel.name.toLowerCase().includes("mod-log");
     for (const roleId of staffIds) {
-      overwrites = setOverwrite(overwrites, roleId, bits(P.VIEW, P.HISTORY, P.SEND, P.CONNECT, P.SPEAK), bits());
+      const role = roles.find((item) => item.id === roleId);
+      const admin = ADMIN_NAMES.has(role?.name?.toLowerCase());
+      overwrites = setOverwrite(
+        overwrites,
+        roleId,
+        logsOnly && !admin ? bits() : bits(P.VIEW, P.HISTORY, P.SEND, P.CONNECT, P.SPEAK),
+        logsOnly && !admin ? bits(P.VIEW) : bits(),
+      );
     }
     await discord(env, `/channels/${channel.id}`, "PATCH", { permission_overwrites: overwrites });
     updated += 1;
