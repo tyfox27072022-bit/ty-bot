@@ -127,6 +127,71 @@ export async function lookupEmbed(env, guildId, userId) {
   };
 }
 
+export async function dmVerificationLog(env, interaction) {
+  const guildId = interaction.guild_id;
+  const actorId = interaction.member.user.id;
+  const config = await guildConfig(env, guildId);
+  let ownerRole = config.roles?.owner;
+  if (!ownerRole) {
+    const roles = await discord(env, `/guilds/${guildId}/roles`);
+    ownerRole = roles.find((role) => role.name === "Owner" && !role.managed)?.id;
+  }
+  if (!ownerRole || !interaction.member.roles?.includes(ownerRole)) {
+    return { content: "Only the Owner role can use /logs." };
+  }
+  const text = await buildVerificationLog(env, guildId);
+  const dm = await discord(env, "/users/@me/channels", "POST", { recipient_id: actorId });
+  const form = new FormData();
+  form.append("payload_json", JSON.stringify({ content: "Verification log. Owner only." }));
+  form.append("files[0]", new Blob([text], { type: "text/plain" }), "verify-logs.txt");
+  const response = await fetch(`https://discord.com/api/v10/channels/${dm.id}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${env.DISCORD_TOKEN}` },
+    body: form,
+  });
+  if (!response.ok) {
+    if (response.status === 403) throw new Error("I can't DM you. Allow DMs from server members, then run /logs again.");
+    throw new Error("Could not send the log file.");
+  }
+  return { content: "Sent verify-logs.txt to your DMs." };
+}
+
+async function buildVerificationLog(env, guildId) {
+  const listed = env.TY?.list ? await env.TY.list({ prefix: `vuser:${guildId}:` }) : { keys: [] };
+  const lines = [`Yoru Lounge verification log`, `Generated: ${new Date().toISOString()}`, `Records: ${listed.keys?.length || 0}`, ""];
+  for (const key of listed.keys || []) {
+    const record = JSON.parse((await env.TY.get(key.name)) || "null");
+    if (!record) continue;
+    const userId = key.name.split(":").pop();
+    let name = "Unknown";
+    try {
+      const user = await discord(env, `/users/${userId}`);
+      name = user.global_name || user.username || name;
+    } catch {
+      name = "Unknown";
+    }
+    const created = accountCreated(userId);
+    const geo = record.geo || {};
+    lines.push(
+      [
+        `Discord: ${name} (${userId})`,
+        `Account created: ${created.toISOString()}`,
+        `Verified at: ${record.at ? new Date(record.at).toISOString() : "Unknown"}`,
+        `Choice: ${record.kind === "yoru" ? "Yoru User" : "Member"}`,
+        `IP: ${record.ip || "Unknown"}`,
+        `Country: ${geo.country || "Unknown"}`,
+        `Region: ${geo.region || "Unknown"}`,
+        `City: ${geo.city || "Unknown"}`,
+        `Network: ${geo.org || "Unknown"}`,
+        `Alt check: ${record.reasons?.length ? record.reasons.join("; ") : "No strong signs"}`,
+        "",
+      ].join("\n"),
+    );
+  }
+  if (!listed.keys?.length) lines.push("No one has finished verification yet.");
+  return lines.join("\n");
+}
+
 export async function rememberIp(env, guildId, ip, userId) {
   if (!env.TY || !ip) return [];
   const key = `vip:${guildId}:${ip}`;

@@ -19,6 +19,12 @@ export const COMMANDS = [
     options: [user("user", "Member")],
   },
   {
+    name: "logs",
+    description: "DM yourself a text file of everyone who verified.",
+    dm_permission: false,
+    default_member_permissions: bits(P.ADMIN),
+  },
+  {
     name: "help",
     description: "List Ty Bot commands.",
     dm_permission: false,
@@ -72,6 +78,7 @@ function sub(name, description, options) {
 
 export const HELP = [
   "/setup — build the server",
+  "/logs — Owner role only. DMs a text file of every verification.",
   "/lookup @user — staff only. Account age, join date, saved IP, and country.",
   "/mod ban, kick, timeout, untimeout, unban, warn, warnings, clearwarns",
   "/server purge, lock, unlock, slowmode, nick, role, rules, staffrules, embed",

@@ -7,7 +7,14 @@ import { processInteraction } from "./index.js";
 import { runSetup } from "./setup.js";
 
 const dataPath = new URL("../data.json", import.meta.url);
-const memory = fs.existsSync(dataPath) ? JSON.parse(fs.readFileSync(dataPath, "utf8")) : {};
+
+function readStore() {
+  try {
+    return fs.existsSync(dataPath) ? JSON.parse(fs.readFileSync(dataPath, "utf8")) : {};
+  } catch {
+    return {};
+  }
+}
 
 const env = {
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
@@ -16,11 +23,16 @@ const env = {
   WORKER_URL: process.env.WORKER_URL || "",
   TY: {
     async get(key) {
-      return memory[key] ?? null;
+      return readStore()[key] ?? null;
     },
     async put(key, value) {
-      memory[key] = value;
-      fs.writeFileSync(dataPath, JSON.stringify(memory));
+      const data = readStore();
+      data[key] = value;
+      fs.writeFileSync(dataPath, JSON.stringify(data));
+    },
+    async list({ prefix } = {}) {
+      const keys = Object.keys(readStore()).filter((key) => !prefix || key.startsWith(prefix));
+      return { keys: keys.map((name) => ({ name })) };
     },
   },
 };

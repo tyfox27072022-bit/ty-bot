@@ -4,7 +4,7 @@ import { dashboardPage } from "./dashboard.js";
 import { channelTools, moderate } from "./mod.js";
 import { memberRulesEmbed, staffRulesEmbed } from "./rules.js";
 import { closeTicket, openTicket, runSetup } from "./setup.js";
-import { geoFromRequest, grantVerifyRoles, lookupEmbed, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
+import { dmVerificationLog, geoFromRequest, grantVerifyRoles, lookupEmbed, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
 
 export default {
   async fetch(request, env) {
@@ -52,6 +52,7 @@ async function handle(env, interaction, baseUrl) {
     if (!userId) return { content: "Pick a user." };
     return lookupEmbed(env, interaction.guild_id, userId);
   }
+  if (name === "logs") return dmVerificationLog(env, interaction);
   if (name === "setup") {
     const summary = await runSetup(env, interaction.guild_id);
     const extra = summary.automodNotes.length ? `\nAutoMod notes: ${summary.automodNotes.join(" | ")}` : "\nAutoMod rules created.";
