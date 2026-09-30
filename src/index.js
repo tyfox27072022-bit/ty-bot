@@ -4,7 +4,7 @@ import { dashboardPage } from "./dashboard.js";
 import { channelTools, moderate } from "./mod.js";
 import { memberRulesEmbed, staffRulesEmbed } from "./rules.js";
 import { closeTicket, openTicket, runSetup } from "./setup.js";
-import { accountCreated, altReasons, geoFromRequest, grantVerifyRoles, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
+import { accountCreated, altReasons, geoFromRequest, grantVerifyRoles, lookupEmbed, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
 
 export default {
   async fetch(request, env) {
@@ -33,8 +33,12 @@ export async function processInteraction(env, interaction, baseUrl) {
   const work = handle(env, interaction, baseUrl).catch((error) => ({ error: error.message || "Command failed." }));
   await ack(interaction, true);
   const result = await work;
-  const content = result.error || result.content || "Done.";
-  await editOriginal(env, interaction.token, { content: content.slice(0, 1900) });
+  const payload = {};
+  if (result.embeds) payload.embeds = result.embeds;
+  const content = result.error || result.content;
+  if (content) payload.content = content.slice(0, 1900);
+  else if (!result.embeds) payload.content = "Done.";
+  await editOriginal(env, interaction.token, payload);
 }
 
 async function handle(env, interaction, baseUrl) {
@@ -42,6 +46,11 @@ async function handle(env, interaction, baseUrl) {
   const name = interaction.data?.name;
   const { sub, map } = optionMap(interaction);
   if (name === "help") return { content: HELP };
+  if (name === "lookup") {
+    const userId = map.user;
+    if (!userId) return { content: "Pick a user." };
+    return lookupEmbed(env, interaction.guild_id, userId);
+  }
   if (name === "setup") {
     const summary = await runSetup(env, interaction.guild_id);
     const extra = summary.automodNotes.length ? `\nAutoMod notes: ${summary.automodNotes.join(" | ")}` : "\nAutoMod rules created.";

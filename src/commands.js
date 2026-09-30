@@ -12,6 +12,13 @@ export const COMMANDS = [
     default_member_permissions: bits(P.ADMIN),
   },
   {
+    name: "lookup",
+    description: "Staff lookup: account age, join date, IP, and country.",
+    dm_permission: false,
+    default_member_permissions: bits(P.MODERATE),
+    options: [user("user", "Member")],
+  },
+  {
     name: "help",
     description: "List Ty Bot commands.",
     dm_permission: false,
@@ -65,6 +72,7 @@ function sub(name, description, options) {
 
 export const HELP = [
   "/setup — build the server",
+  "/lookup @user — staff only. Account age, join date, saved IP, and country.",
   "/mod ban, kick, timeout, untimeout, unban, warn, warnings, clearwarns",
   "/server purge, lock, unlock, slowmode, nick, role, rules, staffrules, embed",
   "Verify and tickets use the buttons /setup posts.",

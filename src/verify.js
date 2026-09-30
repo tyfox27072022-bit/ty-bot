@@ -49,6 +49,12 @@ export async function writeVerifyLog(env, { guildId, userId, kind, user, ip, geo
   const reasons = altReasons(user, created, sameIpUsers);
   const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
   const where = [geo.city, geo.region, geo.country].filter(Boolean).join(", ") || "Unknown";
+  if (env.TY) {
+    await env.TY.put(
+      `vuser:${guildId}:${userId}`,
+      JSON.stringify({ ip: ip || "", geo, reasons, kind, at: Date.now() }),
+    );
+  }
   const config = await guildConfig(env, guildId);
   const channelId = config.channels?.["mod-logs"];
   if (!channelId) return { reasons, logged: false };
@@ -72,6 +78,44 @@ export async function writeVerifyLog(env, { guildId, userId, kind, user, ip, geo
     ],
   });
   return { reasons, logged: true };
+}
+
+export async function lookupEmbed(env, guildId, userId) {
+  const user = await discord(env, `/users/${userId}`);
+  let member = null;
+  try {
+    member = await discord(env, `/guilds/${guildId}/members/${userId}`);
+  } catch {
+    member = null;
+  }
+  const created = accountCreated(userId);
+  const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
+  const stored = env.TY ? JSON.parse((await env.TY.get(`vuser:${guildId}:${userId}`)) || "null") : null;
+  const recordedIp = stored?.ip && !stored.ip.startsWith("Discord did not") ? stored.ip : "";
+  const country = stored?.geo?.country || "";
+  const where = [stored?.geo?.city, stored?.geo?.region, country].filter(Boolean).join(", ");
+  const joined = member?.joined_at
+    ? `<t:${Math.floor(new Date(member.joined_at).getTime() / 1000)}:F>`
+    : "Not in this server";
+  return {
+    embeds: [
+      {
+        color: stored?.reasons?.length ? 0xff5a36 : 0xd6ff4a,
+        title: user.global_name || user.username,
+        thumbnail: user.avatar ? { url: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` } : undefined,
+        fields: [
+          { name: "Discord ID", value: `\`${user.id}\``, inline: true },
+          { name: "Account created", value: `<t:${Math.floor(created.getTime() / 1000)}:F>\n${days} days ago`, inline: true },
+          { name: "Joined server", value: joined, inline: true },
+          { name: "IP", value: recordedIp || "Not recorded yet", inline: true },
+          { name: "Country", value: country || "Not recorded yet", inline: true },
+          { name: "Location", value: where || "Not recorded yet", inline: true },
+          { name: "Alt check", value: stored?.reasons?.length ? stored.reasons.join("\n") : "No saved check yet", inline: false },
+        ],
+        footer: { text: "Ty Bot · staff only. IP and country come from the verify link." },
+      },
+    ],
+  };
 }
 
 export async function rememberIp(env, guildId, ip, userId) {
