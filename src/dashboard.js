@@ -22,13 +22,14 @@ export function dashboardPage() {
 <main>
   <h1>Ty Bot</h1>
   <p>Yoru AI control room. This page talks to Discord with the bot token stored on Cloudflare. The token never reaches the browser.</p>
-  <div class="card" id="login">
+  <form class="card" id="login">
     <p>Password</p>
+    <p id="login-error" style="color:#ff5a36"></p>
     <div class="row">
-      <input id="key" type="password" placeholder="Password" />
-      <button id="enter" type="button">Enter</button>
+      <input id="key" type="password" placeholder="Password" autocomplete="current-password" />
+      <button id="enter" type="submit">Enter</button>
     </div>
-  </div>
+  </form>
   <div class="card" id="app" hidden>
     <label>Server<br /><select id="guild"></select></label>
     <div class="row">
@@ -63,11 +64,19 @@ export function dashboardPage() {
     if (!response.ok) throw new Error(data.error || response.statusText);
     return data;
   }
-  document.getElementById("enter").onclick = async () => {
+  const loginError = document.getElementById("login-error");
+  async function signIn() {
+    loginError.textContent = "";
     try {
       await api("/api/login", { key: document.getElementById("key").value });
       await boot();
-    } catch (error) { say(error.message); }
+    } catch (error) {
+      loginError.textContent = error.message || "Could not sign in.";
+    }
+  }
+  document.getElementById("login").onsubmit = (event) => {
+    event.preventDefault();
+    signIn();
   };
   async function boot() {
     const data = await api("/api/guilds");
