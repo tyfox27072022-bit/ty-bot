@@ -138,7 +138,7 @@ export async function runSetup(env, guildId) {
     embeds: [
       {
         color: 0xd6ff4a,
-        title: "Verify to enter Yoru AI",
+        title: "Enter Yoru Lounge",
         description:
           "Press **Verify**. Ty Bot will open a private site. Press Verify there to unlock the server.",
         footer: { text: "Ty Bot" },
