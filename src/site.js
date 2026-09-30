@@ -50,10 +50,10 @@ const server = http.createServer(async (req, res) => {
       body: req.method === "GET" || req.method === "HEAD" ? undefined : body,
     });
     const response = await worker.fetch(request, env);
-    const headers = Object.fromEntries(response.headers);
+    const outHeaders = Object.fromEntries(response.headers);
     const cookies = response.headers.getSetCookie?.() || [];
-    if (cookies.length) headers["set-cookie"] = cookies;
-    res.writeHead(response.status, headers);
+    if (cookies.length) outHeaders["set-cookie"] = cookies;
+    res.writeHead(response.status, outHeaders);
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
     res.writeHead(500, { "content-type": "text/plain" });
