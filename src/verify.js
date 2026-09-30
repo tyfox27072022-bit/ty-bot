@@ -88,6 +88,15 @@ export async function lookupEmbed(env, guildId, userId) {
   } catch {
     member = null;
   }
+  const memberRoles = member?.roles || [];
+  let exemptId = (await guildConfig(env, guildId)).roles?.nolookup;
+  if (!exemptId) {
+    const roles = await discord(env, `/guilds/${guildId}/roles`);
+    exemptId = roles.find((role) => role.name === "No Lookup" && !role.managed)?.id;
+  }
+  if (exemptId && memberRoles.includes(exemptId)) {
+    return { content: "This person has No Lookup. Ty Bot will not show their info." };
+  }
   const created = accountCreated(userId);
   const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
   const stored = env.TY ? JSON.parse((await env.TY.get(`vuser:${guildId}:${userId}`)) || "null") : null;

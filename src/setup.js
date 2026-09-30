@@ -218,6 +218,24 @@ export async function runSetup(env, guildId) {
   return { roles, channels: ids, automodNotes, ...(await lockUnverified(env, guildId)) };
 }
 
+export async function ensureNoLookupRole(env, guildId) {
+  const roles = await discord(env, `/guilds/${guildId}/roles`);
+  let role = roles.find((item) => item.name === "No Lookup" && !item.managed);
+  if (!role) {
+    role = await discord(env, `/guilds/${guildId}/roles`, "POST", {
+      name: "No Lookup",
+      color: 0x6b7280,
+      hoist: false,
+      mentionable: false,
+      permissions: "0",
+    });
+  }
+  const config = await guildConfig(env, guildId);
+  config.roles = { ...(config.roles || {}), nolookup: role.id };
+  await saveConfig(env, guildId, config);
+  return role.id;
+}
+
 function ow(id, allow, deny, type = 0) {
   return { id, type, allow, deny };
 }
