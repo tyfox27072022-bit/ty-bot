@@ -140,7 +140,7 @@ export async function runSetup(env, guildId) {
         color: 0xd6ff4a,
         title: "Verify to enter Yoru AI",
         description:
-          "Press **Verify** to get the Member role and unlock the server.\nBy verifying you agree to the server rules and Discord's Terms of Service.",
+          "Press **Verify**. Ty Bot will open a private site. Press Verify there to unlock the server.",
         footer: { text: "Ty Bot" },
       },
     ],

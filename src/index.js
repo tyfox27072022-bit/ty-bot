@@ -4,12 +4,12 @@ import { dashboardPage } from "./dashboard.js";
 import { channelTools, moderate } from "./mod.js";
 import { memberRulesEmbed, staffRulesEmbed } from "./rules.js";
 import { closeTicket, openTicket, runSetup } from "./setup.js";
-import { accountCreated, altReasons, geoFromRequest, grantVerifyRoles, lookupEmbed, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
+import { geoFromRequest, grantVerifyRoles, lookupEmbed, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/verify") return verifyPage(request, env, url);
+    if (url.pathname === "/verify" && (request.method === "GET" || request.method === "POST")) return verifyPage(request, env, url);
     if (request.method === "POST" && url.pathname === "/interactions") return interactions(request, env);
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/dashboard")) {
       return html(dashboardPage());
@@ -35,6 +35,7 @@ export async function processInteraction(env, interaction, baseUrl) {
   const result = await work;
   const payload = {};
   if (result.embeds) payload.embeds = result.embeds;
+  if (result.components) payload.components = result.components;
   const content = result.error || result.content;
   if (content) payload.content = content.slice(0, 1900);
   else if (!result.embeds) payload.content = "Done.";
@@ -90,53 +91,71 @@ async function component(env, interaction, baseUrl) {
 }
 
 async function startVerify(env, interaction, kind, baseUrl) {
-  const guildId = interaction.guild_id;
-  const userId = interaction.member.user.id;
   const origin = (baseUrl || env.WORKER_URL || "").replace(/\/$/, "");
   if (!origin) {
-    const user = await discord(env, `/users/${userId}`);
-    await grantVerifyRoles(env, guildId, userId, kind);
-    await writeVerifyLog(env, {
-      guildId,
-      userId,
-      kind,
-      user,
-      ip: "Discord did not send an IP. Open the safety link once the Worker URL is set.",
-      geo: {},
-      sameIpUsers: [],
-    }).catch(() => {});
-    const created = accountCreated(userId);
-    const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
-    const guess = altReasons(user, created, []).length ? " Staff flagged this as a possible alt." : "";
-    return {
-      content: kind === "yoru"
-        ? `Verified. You have Member and Yoru User. Account age: ${days} days.${guess}`
-        : `Verified. You have the Member role. Account age: ${days} days.${guess}`,
-    };
+    return { content: "The verify site is not connected yet. Staff need to set the Cloudflare Worker URL." };
   }
-  const token = await makeVerifyToken(env.DISCORD_TOKEN, { guildId, userId, kind });
-  return { content: `Open this private link to finish verifying. It expires in 15 minutes.\n${origin}/verify?t=${encodeURIComponent(token)}` };
+  const token = await makeVerifyToken(env.DISCORD_TOKEN, {
+    guildId: interaction.guild_id,
+    userId: interaction.member.user.id,
+    kind,
+  });
+  const url = `${origin}/verify?t=${encodeURIComponent(token)}`;
+  return {
+    content: "Open the verify site and press Verify. Ty Bot records your IP, location, Discord ID, and account age. This link expires in 15 minutes.",
+    components: [{ type: 1, components: [{ type: 2, style: 5, label: "Open verify site", url }] }],
+  };
 }
 
 async function verifyPage(request, env, url) {
+  const token = request.method === "POST" ? await readPostedToken(request) : url.searchParams.get("t");
   try {
-    const data = await readVerifyToken(env.DISCORD_TOKEN, url.searchParams.get("t"));
+    const data = await readVerifyToken(env.DISCORD_TOKEN, token);
     const usedKey = `vused:${data.g}:${data.u}:${data.e}`;
-    if (env.TY && (await env.TY.get(usedKey))) throw new Error("This verify link was already used.");
+    if (env.TY && (await env.TY.get(usedKey))) throw new Error("This verify link was already used. Press Verify in Discord again.");
+    if (request.method !== "POST") return html(verifySite("Press the button to unlock Yoru AI.", token));
     const ip = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() || "";
     const user = await discord(env, `/users/${data.u}`);
     const sameIpUsers = await rememberIp(env, data.g, ip, data.u);
     await grantVerifyRoles(env, data.g, data.u, data.k);
-    await writeVerifyLog(env, { guildId: data.g, userId: data.u, kind: data.k, user, ip: ip || "Unknown", geo: geoFromRequest(request), sameIpUsers }).catch(() => {});
+    await writeVerifyLog(env, {
+      guildId: data.g,
+      userId: data.u,
+      kind: data.k,
+      user,
+      ip: ip || "Unknown",
+      geo: geoFromRequest(request),
+      sameIpUsers,
+    }).catch(() => {});
     if (env.TY) await env.TY.put(usedKey, "1");
-    return html("<!doctype html><title>Verified</title><body style=\"font-family:sans-serif;background:#111;color:#fff;padding:40px\"><h1>You're verified</h1><p>You can close this page and go back to Discord.</p></body>");
+    return html(verifySite("You're verified. Go back to Discord. The Member role is yours.", null, true));
   } catch (error) {
-    return html(`<!doctype html><title>Verify</title><body style="font-family:sans-serif;background:#111;color:#fff;padding:40px"><h1>Could not verify</h1><p>${escapeHtml(error.message || "Try the button again.")}</p></body>`, 400);
+    return html(verifySite(error.message || "Press Verify in Discord again.", null), 400);
   }
 }
 
+function verifySite(message, token, done = false) {
+  const button = token
+    ? `<form method="post" action="/verify"><input type="hidden" name="t" value="${escapeHtml(token)}"><button type="submit">Verify</button></form>`
+    : "";
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Verify · Yoru AI</title><style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0c0d0b;color:#f4f1ea;font-family:ui-sans-serif,system-ui,sans-serif}
+    .card{width:min(440px,calc(100% - 32px));background:#161814;border:1px solid #2a2d26;border-radius:18px;padding:28px}
+    h1{margin:0 0 8px;font-size:28px}p{color:#b7b2a8;line-height:1.45}
+    button{margin-top:18px;width:100%;height:48px;border:0;border-radius:12px;background:#d6ff4a;color:#14160f;font-weight:700;font-size:16px}
+  </style></head><body><main class="card"><p>Ty Bot</p><h1>${done ? "You're in" : "Verify for Yoru AI"}</h1><p>${escapeHtml(message)}</p>${button}</main></body></html>`;
+}
+
+async function readPostedToken(request) {
+  const type = request.headers.get("Content-Type") || "";
+  const raw = await request.text();
+  if (type.includes("application/json")) return JSON.parse(raw || "{}").t || "";
+  return new URLSearchParams(raw).get("t") || "";
+}
+
 function escapeHtml(value) {
-  return String(value).replaceAll("&", "&").replaceAll("<", "<").replaceAll(">", ">");
+  const named = { "&": "amp", "<": "lt", ">": "gt", '"': "quot" };
+  return String(value).replace(/[&<>"]/g, (ch) => `&${named[ch]};`);
 }
 
 async function api(request, env, url) {

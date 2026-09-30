@@ -13,6 +13,7 @@ const env = {
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
   DISCORD_APP_ID: process.env.DISCORD_APP_ID,
   DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY,
+  WORKER_URL: process.env.WORKER_URL || "",
   TY: {
     async get(key) {
       return memory[key] ?? null;
