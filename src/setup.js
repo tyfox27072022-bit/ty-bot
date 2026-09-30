@@ -178,19 +178,7 @@ export async function runSetup(env, guildId) {
   await postOnce(env, ids.rules, { embeds: [memberRulesEmbed()] });
   await postOnce(env, ids["staff-rules"], { embeds: [staffRulesEmbed()] });
 
-  const automodNotes = [];
-  try {
-    await discord(env, `/guilds/${guildId}/auto-moderation/rules`, "POST", {
-      name: "Ty Bot invites",
-      event_type: 1,
-      trigger_type: 1,
-      trigger_metadata: { keyword_filter: ["*discord.gg/*", "*discord.com/invite/*"], regex_patterns: [] },
-      actions: [{ type: 1, metadata: { custom_message: "Invite links are blocked." } }],
-      enabled: true,
-    });
-  } catch (error) {
-    automodNotes.push(`invites: ${error.message}`);
-  }
+  const automodNotes = await syncAutomod(env, guildId);
   try {
     await discord(env, `/guilds/${guildId}/auto-moderation/rules`, "POST", {
       name: "Ty Bot mentions",
@@ -216,6 +204,64 @@ export async function runSetup(env, guildId) {
   }
 
   return { roles, channels: ids, automodNotes, ...(await lockUnverified(env, guildId)) };
+}
+
+export async function syncAutomod(env, guildId) {
+  const roles = await discord(env, `/guilds/${guildId}/roles`);
+  const exempt = roles.filter((role) => ["owner", "head admin", "admin", "staff"].includes(role.name.toLowerCase())).map((role) => role.id);
+  const existing = await discord(env, `/guilds/${guildId}/auto-moderation/rules`);
+  const rules = [
+    {
+      name: "Ty Bot links",
+      event_type: 1,
+      trigger_type: 1,
+      trigger_metadata: { keyword_filter: ["*http://*", "*https://*"], regex_patterns: [] },
+      actions: [{ type: 1, metadata: { custom_message: "Links are not allowed here." } }],
+      enabled: true,
+      exempt_roles: exempt,
+    },
+    {
+      name: "Ty Bot invites",
+      event_type: 1,
+      trigger_type: 1,
+      trigger_metadata: { keyword_filter: ["*discord.gg*", "*discord.com/invite*", "*discordapp.com/invite*"], regex_patterns: [] },
+      actions: [{ type: 1, metadata: { custom_message: "Discord invites are not allowed." } }],
+      enabled: true,
+      exempt_roles: exempt,
+    },
+    {
+      name: "Ty Bot banned words",
+      event_type: 1,
+      trigger_type: 1,
+      trigger_metadata: {
+        keyword_filter: ["cheat", "cheats", "cheating", "cheater", "aimbot", "wallhack", "hack", "hacks", "hacking", "hacker"],
+        regex_patterns: [],
+      },
+      actions: [{ type: 1, metadata: { custom_message: "That word is not allowed." } }],
+      enabled: true,
+      exempt_roles: exempt,
+    },
+    {
+      name: "Ty Bot slurs",
+      event_type: 1,
+      trigger_type: 4,
+      trigger_metadata: { presets: [1, 3] },
+      actions: [{ type: 1, metadata: { custom_message: "That language is not allowed." } }],
+      enabled: true,
+      exempt_roles: exempt,
+    },
+  ];
+  const notes = [];
+  for (const rule of rules) {
+    const found = existing.find((item) => item.name === rule.name);
+    try {
+      if (found) await discord(env, `/guilds/${guildId}/auto-moderation/rules/${found.id}`, "PATCH", rule);
+      else await discord(env, `/guilds/${guildId}/auto-moderation/rules`, "POST", rule);
+    } catch (error) {
+      notes.push(`${rule.name}: ${error.message}`);
+    }
+  }
+  return notes;
 }
 
 export async function ensureNoLookupRole(env, guildId) {
