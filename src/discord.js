@@ -50,18 +50,24 @@ function hex(value) {
   return out;
 }
 
-export async function discord(env, path, method = "GET", body) {
+export async function discord(env, path, method = "GET", body, attempt = 0) {
   const response = await fetch(`https://discord.com/api/v10${path}`, {
     method,
     headers: {
       Authorization: `Bot ${env.DISCORD_TOKEN}`,
       "Content-Type": "application/json",
+      "User-Agent": "TyBot (https://github.com/tyfox27072022-bit/ty-bot, 1.0)",
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (response.status === 204) return null;
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
+  if (response.status === 429 && attempt < 5) {
+    const retry = Math.ceil((data?.retry_after || 1) * 1000) + 250;
+    await new Promise((resolve) => setTimeout(resolve, retry));
+    return discord(env, path, method, body, attempt + 1);
+  }
   if (!response.ok) {
     const message = data?.message || response.statusText;
     throw new Error(`${response.status} ${path}: ${message}`);

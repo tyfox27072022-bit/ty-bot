@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { Client, GatewayIntentBits } from "discord.js";
+import { ensureBoosterRole, syncBooster } from "./booster.js";
 import { COMMANDS } from "./commands.js";
 import { discord } from "./discord.js";
 import { processInteraction } from "./index.js";
@@ -23,35 +24,62 @@ const env = {
   },
 };
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const intents = [GatewayIntentBits.Guilds];
+if (process.env.MEMBER_INTENT === "1") intents.push(GatewayIntentBits.GuildMembers);
+const client = new Client({ intents });
 
 client.on("raw", (packet) => {
-  if (packet.t !== "INTERACTION_CREATE") return;
-  processInteraction(env, packet.d).catch((error) => console.error("interaction", error));
+  if (packet.t === "INTERACTION_CREATE") {
+    processInteraction(env, packet.d).catch((error) => console.error("interaction", error));
+    return;
+  }
+  if (packet.t === "GUILD_MEMBER_UPDATE" || packet.t === "GUILD_MEMBER_ADD") {
+    const member = packet.d;
+    syncBooster(env, member.guild_id, member.user?.id, member.roles, member.premium_since).catch((error) =>
+      console.error("booster", error.message),
+    );
+  }
 });
 
 client.once("ready", async () => {
   console.log(`online as ${client.user.tag} in ${client.guilds.cache.size} server(s)`);
   for (const guild of client.guilds.cache.values()) {
-    await prepare(guild.id, guild.name);
+    await prepare(guild);
   }
 });
 
 client.on("guildCreate", (guild) => {
-  prepare(guild.id, guild.name).catch((error) => console.error("join", error));
+  prepare(guild).catch((error) => console.error("join", error));
 });
 
-async function prepare(guildId, name) {
-  console.log(`syncing commands in ${name}`);
-  await discord(env, `/applications/${env.DISCORD_APP_ID}/guilds/${guildId}/commands`, "PUT", COMMANDS);
-  const existing = await env.TY.get(`cfg:${guildId}`);
-  if (existing) {
-    console.log(`already set up ${name}`);
+async function prepare(guild) {
+  console.log(`syncing commands in ${guild.name}`);
+  await discord(env, `/applications/${env.DISCORD_APP_ID}/guilds/${guild.id}/commands`, "PUT", COMMANDS);
+  const existing = await env.TY.get(`cfg:${guild.id}`);
+  if (!existing) {
+    console.log(`running setup in ${guild.name}`);
+    const summary = await runSetup(env, guild.id);
+    console.log(`setup done in ${guild.name}`, summary.automodNotes);
+  } else {
+    console.log(`already set up ${guild.name}`);
+  }
+  const roleId = await ensureBoosterRole(env, guild.id);
+  console.log(`server booster role ${roleId}`);
+  if (process.env.MEMBER_INTENT !== "1") {
+    console.log("booster role is ready; member intent is off so boosts are not watched yet");
     return;
   }
-  console.log(`running setup in ${name}`);
-  const summary = await runSetup(env, guildId);
-  console.log(`setup done in ${name}`, summary.automodNotes);
+  try {
+    const members = await guild.members.fetch();
+    for (const member of members.values()) {
+      if (member.user.bot) continue;
+      await syncBooster(env, guild.id, member.id, [...member.roles.cache.keys()], member.premiumSince);
+    }
+    const boosting = members.filter((member) => member.premiumSince).size;
+    console.log(`booster sync ${guild.name}: ${boosting} boosting`);
+  } catch (error) {
+    console.error("booster sync failed", error.message);
+  }
 }
 
 client.login(env.DISCORD_TOKEN);
