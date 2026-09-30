@@ -107,7 +107,7 @@ async function startVerify(env, interaction, kind, baseUrl) {
   };
 }
 
-async function verifyPage(request, env, url) {
+export async function verifyPage(request, env, url) {
   const token = request.method === "POST" ? await readPostedToken(request) : url.searchParams.get("t");
   try {
     const data = await readVerifyToken(env.DISCORD_TOKEN, token);
@@ -124,7 +124,7 @@ async function verifyPage(request, env, url) {
       kind: data.k,
       user,
       ip: ip || "Unknown",
-      geo: geoFromRequest(request),
+      geo: await lookupGeo(request, ip),
       sameIpUsers,
     }).catch(() => {});
     if (env.TY) await env.TY.put(usedKey, "1");
@@ -144,6 +144,24 @@ function verifySite(message, token, done = false) {
     h1{margin:0 0 8px;font-size:28px}p{color:#b7b2a8;line-height:1.45}
     button{margin-top:18px;width:100%;height:48px;border:0;border-radius:12px;background:#d6ff4a;color:#14160f;font-weight:700;font-size:16px}
   </style></head><body><main class="card"><p>Ty Bot</p><h1>${done ? "You're in" : "Verify for Yoru AI"}</h1><p>${escapeHtml(message)}</p>${button}</main></body></html>`;
+}
+
+async function lookupGeo(request, ip) {
+  const geo = geoFromRequest(request);
+  if (geo.country || !ip) return geo;
+  try {
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`);
+    const data = await response.json();
+    if (!data?.success) return geo;
+    return {
+      city: data.city || "",
+      region: data.region || "",
+      country: data.country_code || data.country || "",
+      org: data.connection?.isp || "",
+    };
+  } catch {
+    return geo;
+  }
 }
 
 async function readPostedToken(request) {
