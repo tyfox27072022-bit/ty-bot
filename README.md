@@ -14,15 +14,27 @@ Slash commands and buttons use Discord's interactions URL. Invite blocking, spam
 - Member rules link to Discord's Terms of Service, Community Guidelines, and Privacy Policy.
 - Staff rules are posted in `#staff-rules` and are staff-only.
 
-## Cloudflare
+## If Cloudflare says the build was skipped
 
-1. Create a KV namespace and put its id in `wrangler.toml` where it says `REPLACE_WITH_KV_NAMESPACE_ID`. Binding name must stay `TY`.
-2. Deploy this folder as a Worker.
-3. Set secrets: `DISCORD_TOKEN`, `DISCORD_PUBLIC_KEY`, `DISCORD_APP_ID`, `DASHBOARD_KEY`.
-4. In the Discord Developer Portal, set Interactions Endpoint URL to `https://<your-worker>.workers.dev/interactions`.
-5. Invite the bot with Administrator. Drag the Ty Bot role above Staff.
-6. Open the worker URL, sign in with `DASHBOARD_KEY`, choose the server, Sync commands, then Run setup.
-7. Upload the Ty Bot portrait as the application avatar.
+This repo is a Worker, not a Pages site. The files are at the repository root, not in a `bot` folder.
+
+1. Open **Workers & Pages**, then the **ty-bot** Worker. The Worker name must be exactly `ty-bot`.
+2. Go to **Settings → Builds**.
+3. Production branch: `main`.
+4. Root directory: leave it empty. Delete `bot` if it is set.
+5. Build command: leave it empty.
+6. Deploy command: `npx wrangler deploy`.
+7. **Build watch paths**: Includes `*`, Excludes empty. A path like `bot/*` skips every build because that folder is not in the repo.
+8. Save, open **Deployments**, and choose **Retry build** on the latest commit.
+
+Do not create this as a Pages project. Pages skips or ignores a Worker repo.
+
+After a build succeeds:
+
+1. Set secrets: `DISCORD_TOKEN`, `DISCORD_PUBLIC_KEY`, `DISCORD_APP_ID`, `DASHBOARD_KEY`.
+2. Optional: create a KV namespace named `TY` and add its id under `kv_namespaces` in `wrangler.toml`.
+3. In the Discord Developer Portal, set Interactions Endpoint URL to `https://ty-bot.<your-subdomain>.workers.dev/interactions`.
+4. The bot is already in Yoru AI. Drag the Ty Bot role above Staff if you have not.
 
 Do not commit the bot token.
 
