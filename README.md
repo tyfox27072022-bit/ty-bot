@@ -1,6 +1,6 @@
 # Ty Bot
 
-Discord bot for **SINS CENTRAL**. Moderation, verify, tickets, staff rules, and a dashboard. It runs on Cloudflare Workers, so there is no always-on Node process.
+Discord bot for **Yoru AI**. Moderation, verify, tickets, staff rules, and a dashboard. It runs on Cloudflare Workers, so there is no always-on Node process.
 
 Slash commands and buttons use Discord's interactions URL. Invite blocking, spam, and mass mentions are Discord AutoMod rules, which keep working even when the worker is idle.
 

@@ -7,7 +7,7 @@ const num = (name, description, min, max) => ({ type: 4, name, description, requ
 export const COMMANDS = [
   {
     name: "setup",
-    description: "Create SINS CENTRAL roles, channels, rules, verify, and tickets.",
+    description: "Create Yoru AI roles, channels, rules, verify, and tickets.",
     dm_permission: false,
     default_member_permissions: bits(P.ADMIN),
   },
@@ -49,7 +49,7 @@ export const COMMANDS = [
         { type: 8, name: "role", description: "Role", required: true },
       ]),
       sub("rules", "Post member rules", []),
-      sub("staffrules", "Post SINS CENTRAL staff rules", []),
+      sub("staffrules", "Post Yoru AI staff rules", []),
       sub("embed", "Send a custom embed", [str("title", "Title", true), str("description", "Description", true), str("color", "Hex like d6ff4a")]),
       sub("info", "Server info", []),
       sub("userinfo", "User info", [user("user", "User", false)]),

@@ -21,7 +21,7 @@ export function dashboardPage() {
 <body>
 <main>
   <h1>Ty Bot</h1>
-  <p>SINS CENTRAL control room. This page talks to Discord with the bot token stored on Cloudflare. The token never reaches the browser.</p>
+  <p>Yoru AI control room. This page talks to Discord with the bot token stored on Cloudflare. The token never reaches the browser.</p>
   <div class="card" id="login">
     <p>Dashboard key</p>
     <div class="row">

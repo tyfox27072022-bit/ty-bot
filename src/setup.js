@@ -121,7 +121,7 @@ export async function runSetup(env, guildId) {
   await channel("off-topic", community, 0, "Anything else.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("create-a-ticket", support, 0, "Open a private ticket.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
   await channel("staff-chat", staffCat, 0, "Staff discussion.", [everyoneDeny, staffAllow, ownerAllow, botAllow]);
-  await channel("staff-rules", staffCat, 0, "SINS CENTRAL staff rules.", [
+  await channel("staff-rules", staffCat, 0, "Yoru AI staff rules.", [
     everyoneDeny,
     ow(roles.staff, bits(P.VIEW, P.HISTORY), bits(P.SEND)),
     ownerAllow,
@@ -138,7 +138,7 @@ export async function runSetup(env, guildId) {
     embeds: [
       {
         color: 0xd6ff4a,
-        title: "Verify to enter SINS CENTRAL",
+        title: "Verify to enter Yoru AI",
         description:
           "Press **Verify** for the Member role.\nPress **Yoru User** for Member plus Yoru User.\nBy verifying you agree to the server rules and Discord's Terms of Service.",
         footer: { text: "Ty Bot" },

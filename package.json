@@ -2,7 +2,7 @@
   "name": "ty-bot",
   "private": true,
   "type": "module",
-  "description": "Ty Bot for SINS CENTRAL. Discord moderation, tickets, verify, and a dashboard on Cloudflare Workers.",
+  "description": "Ty Bot for Yoru AI. Discord moderation, tickets, verify, and a dashboard on Cloudflare Workers.",
   "scripts": {
     "start": "node src/gateway.js"
   },

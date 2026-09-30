@@ -7,7 +7,7 @@ export const POLICY = [
 export function memberRulesEmbed() {
   return {
     color: 0xd6ff4a,
-    title: "SINS CENTRAL rules",
+    title: "Yoru AI rules",
     description: [
       "By staying here you agree to these rules and to Discord's policies.",
       "",
@@ -32,9 +32,9 @@ export function memberRulesEmbed() {
 export function staffRulesEmbed() {
   return {
     color: 0xc8a24a,
-    title: "SINS CENTRAL | STAFF RULES",
+    title: "Yoru AI | STAFF RULES",
     description: [
-      "Staff members represent SINS CENTRAL and are expected to keep the community welcoming, organized, and fair.",
+      "Staff members represent Yoru AI and are expected to keep the community welcoming, organized, and fair.",
       "",
       "**1 | Treat members with respect**",
       "Having a staff role doesn't give anyone permission to disrespect, embarrass, or unnecessarily argue with members.",
@@ -66,7 +66,7 @@ export function staffRulesEmbed() {
       "**10 | Set the example**",
       "Staff should demonstrate the behavior expected from the rest of the community.",
       "",
-      "Respect the community. Protect the community. Represent SINS CENTRAL.",
+      "Respect the community. Protect the community. Represent Yoru AI.",
     ].join("\n"),
     footer: { text: "Ty Bot · staff only" },
   };
