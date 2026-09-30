@@ -23,16 +23,16 @@ async function interactions(request, env) {
   if (!ok) return new Response("bad signature", { status: 401 });
   const interaction = JSON.parse(body);
   if (interaction.type === 1) return Response.json({ type: 1 });
+  await processInteraction(env, interaction);
+  return new Response(null, { status: 202 });
+}
 
+export async function processInteraction(env, interaction) {
   const work = handle(env, interaction).catch((error) => ({ error: error.message || "Command failed." }));
-  if (interaction.type === 2 || interaction.type === 3) {
-    await ack(interaction, true);
-    const result = await work;
-    const content = result.error || result.content || "Done.";
-    await editOriginal(env, interaction.token, { content: content.slice(0, 1900) });
-    return new Response(null, { status: 202 });
-  }
-  return Response.json({ type: 4, data: { content: "Unsupported interaction.", flags: 64 } });
+  await ack(interaction, true);
+  const result = await work;
+  const content = result.error || result.content || "Done.";
+  await editOriginal(env, interaction.token, { content: content.slice(0, 1900) });
 }
 
 async function handle(env, interaction) {
