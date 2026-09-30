@@ -4,10 +4,12 @@ import { dashboardPage } from "./dashboard.js";
 import { channelTools, moderate } from "./mod.js";
 import { memberRulesEmbed, staffRulesEmbed } from "./rules.js";
 import { closeTicket, openTicket, runSetup } from "./setup.js";
+import { accountCreated, altReasons, geoFromRequest, grantVerifyRoles, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/verify") return verifyPage(request, env, url);
     if (request.method === "POST" && url.pathname === "/interactions") return interactions(request, env);
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/dashboard")) {
       return html(dashboardPage());
@@ -23,20 +25,20 @@ async function interactions(request, env) {
   if (!ok) return new Response("bad signature", { status: 401 });
   const interaction = JSON.parse(body);
   if (interaction.type === 1) return Response.json({ type: 1 });
-  await processInteraction(env, interaction);
+  await processInteraction(env, interaction, new URL(request.url).origin);
   return new Response(null, { status: 202 });
 }
 
-export async function processInteraction(env, interaction) {
-  const work = handle(env, interaction).catch((error) => ({ error: error.message || "Command failed." }));
+export async function processInteraction(env, interaction, baseUrl) {
+  const work = handle(env, interaction, baseUrl).catch((error) => ({ error: error.message || "Command failed." }));
   await ack(interaction, true);
   const result = await work;
   const content = result.error || result.content || "Done.";
   await editOriginal(env, interaction.token, { content: content.slice(0, 1900) });
 }
 
-async function handle(env, interaction) {
-  if (interaction.type === 3) return component(env, interaction);
+async function handle(env, interaction, baseUrl) {
+  if (interaction.type === 3) return component(env, interaction, baseUrl);
   const name = interaction.data?.name;
   const { sub, map } = optionMap(interaction);
   if (name === "help") return { content: HELP };
@@ -62,18 +64,9 @@ async function handle(env, interaction) {
   return { content: "Unknown command. Run sync from the dashboard." };
 }
 
-async function component(env, interaction) {
+async function component(env, interaction, baseUrl) {
   const id = interaction.data.custom_id;
-  if (id === "verify_member" || id === "verify_yoru") {
-    const config = await guildConfig(env, interaction.guild_id);
-    if (!config.roles?.member) throw new Error("Run /setup first.");
-    const userId = interaction.member.user.id;
-    await discord(env, `/guilds/${interaction.guild_id}/members/${userId}/roles/${config.roles.member}`, "PUT");
-    if (id === "verify_yoru" && config.roles.yoru) {
-      await discord(env, `/guilds/${interaction.guild_id}/members/${userId}/roles/${config.roles.yoru}`, "PUT");
-    }
-    return { content: id === "verify_yoru" ? "Verified. You have Member and Yoru User." : "Verified. You have the Member role." };
-  }
+  if (id === "verify_member" || id === "verify_yoru") return startVerify(env, interaction, id === "verify_yoru" ? "yoru" : "member", baseUrl);
   if (id.startsWith("ticket_") && id !== "ticket_close") {
     const kind = id.replace("ticket_", "");
     const ticket = await openTicket(env, interaction, kind);
@@ -85,6 +78,56 @@ async function component(env, interaction) {
     return { content: "Closing ticket." };
   }
   return { content: "Unknown button." };
+}
+
+async function startVerify(env, interaction, kind, baseUrl) {
+  const guildId = interaction.guild_id;
+  const userId = interaction.member.user.id;
+  const origin = (baseUrl || env.WORKER_URL || "").replace(/\/$/, "");
+  if (!origin) {
+    const user = await discord(env, `/users/${userId}`);
+    await grantVerifyRoles(env, guildId, userId, kind);
+    await writeVerifyLog(env, {
+      guildId,
+      userId,
+      kind,
+      user,
+      ip: "Discord did not send an IP. Open the safety link once the Worker URL is set.",
+      geo: {},
+      sameIpUsers: [],
+    }).catch(() => {});
+    const created = accountCreated(userId);
+    const days = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
+    const guess = altReasons(user, created, []).length ? " Staff flagged this as a possible alt." : "";
+    return {
+      content: kind === "yoru"
+        ? `Verified. You have Member and Yoru User. Account age: ${days} days.${guess}`
+        : `Verified. You have the Member role. Account age: ${days} days.${guess}`,
+    };
+  }
+  const token = await makeVerifyToken(env.DISCORD_TOKEN, { guildId, userId, kind });
+  return { content: `Open this private link to finish verifying. It expires in 15 minutes.\n${origin}/verify?t=${encodeURIComponent(token)}` };
+}
+
+async function verifyPage(request, env, url) {
+  try {
+    const data = await readVerifyToken(env.DISCORD_TOKEN, url.searchParams.get("t"));
+    const usedKey = `vused:${data.g}:${data.u}:${data.e}`;
+    if (env.TY && (await env.TY.get(usedKey))) throw new Error("This verify link was already used.");
+    const ip = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() || "";
+    const user = await discord(env, `/users/${data.u}`);
+    const sameIpUsers = await rememberIp(env, data.g, ip, data.u);
+    await grantVerifyRoles(env, data.g, data.u, data.k);
+    await writeVerifyLog(env, { guildId: data.g, userId: data.u, kind: data.k, user, ip: ip || "Unknown", geo: geoFromRequest(request), sameIpUsers }).catch(() => {});
+    if (env.TY) await env.TY.put(usedKey, "1");
+    return html("<!doctype html><title>Verified</title><body style=\"font-family:sans-serif;background:#111;color:#fff;padding:40px\"><h1>You're verified</h1><p>You can close this page and go back to Discord.</p></body>");
+  } catch (error) {
+    return html(`<!doctype html><title>Verify</title><body style="font-family:sans-serif;background:#111;color:#fff;padding:40px"><h1>Could not verify</h1><p>${escapeHtml(error.message || "Try the button again.")}</p></body>`, 400);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value).replaceAll("&", "&").replaceAll("<", "<").replaceAll(">", ">");
 }
 
 async function api(request, env, url) {
@@ -162,6 +205,6 @@ async function sign(secret, data) {
   return btoa(String.fromCharCode(...new Uint8Array(raw))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-function html(body) {
-  return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+function html(body, status = 200) {
+  return new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
