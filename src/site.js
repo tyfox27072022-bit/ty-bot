@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
-import { verifyPage } from "./index.js";
+import worker from "./index.js";
 
 const dataPath = new URL("../data.json", import.meta.url);
 
@@ -16,6 +16,7 @@ const env = {
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
   DISCORD_APP_ID: process.env.DISCORD_APP_ID,
   DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY,
+  DASHBOARD_KEY: process.env.DASHBOARD_KEY || "",
   TY: {
     async get(key) {
       return readStore()[key] ?? null;
@@ -48,8 +49,11 @@ const server = http.createServer(async (req, res) => {
       headers,
       body: req.method === "GET" || req.method === "HEAD" ? undefined : body,
     });
-    const response = url.pathname === "/verify" ? await verifyPage(request, env, url) : new Response("Ty Bot verify", { status: 404 });
-    res.writeHead(response.status, { "content-type": response.headers.get("content-type") || "text/plain" });
+    const response = await worker.fetch(request, env);
+    const headers = Object.fromEntries(response.headers);
+    const cookies = response.headers.getSetCookie?.() || [];
+    if (cookies.length) headers["set-cookie"] = cookies;
+    res.writeHead(response.status, headers);
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
     res.writeHead(500, { "content-type": "text/plain" });
