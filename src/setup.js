@@ -113,7 +113,7 @@ export async function runSetup(env, guildId) {
   ];
 
   await channel("welcome", info, 0, "New members start here.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
-  await channel("rules", info, 0, "Server rules and Discord policies.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
+  await channel("rules", info, 0, "Server rules and Discord policies.", verifyOverwrites);
   await channel("announcements", info, 0, "Official announcements.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
   await channel("verify", info, 0, "Verify to unlock the server.", verifyOverwrites);
   await channel("general", community, 0, "Main chat.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
@@ -216,11 +216,68 @@ export async function runSetup(env, guildId) {
     automodNotes.push(`spam: ${error.message}`);
   }
 
-  return { roles, channels: ids, automodNotes };
+  return { roles, channels: ids, automodNotes, ...(await lockUnverified(env, guildId)) };
 }
 
 function ow(id, allow, deny, type = 0) {
   return { id, type, allow, deny };
+}
+
+const STAFF_NAMES = new Set(["owner", "head admin", "admin", "moderator", "support team", "staff", "youtube moderator"]);
+const OPEN_NAMES = new Set(["rules", "verify"]);
+
+export async function lockUnverified(env, guildId) {
+  const roles = await discord(env, `/guilds/${guildId}/roles`);
+  const everyone = roles.find((role) => role.id === guildId);
+  const view = P.VIEW;
+  const nextEveryone = (BigInt(everyone.permissions) & ~view).toString();
+  if (nextEveryone !== everyone.permissions) {
+    await discord(env, `/guilds/${guildId}/roles/${guildId}`, "PATCH", { permissions: nextEveryone });
+  }
+
+  const memberIds = roles.filter((role) => ["member", "yoru user"].includes(role.name.toLowerCase())).map((role) => role.id);
+  const staffIds = roles.filter((role) => STAFF_NAMES.has(role.name.toLowerCase())).map((role) => role.id);
+  const channels = await discord(env, `/guilds/${guildId}/channels`);
+  const byId = new Map(channels.map((channel) => [channel.id, channel]));
+  let updated = 0;
+
+  for (const channel of channels) {
+    const parent = byId.get(channel.parent_id);
+    const staffOnly =
+      channel.name.toLowerCase().includes("staff") ||
+      channel.name.toLowerCase().includes("mod-log") ||
+      channel.name.toLowerCase().startsWith("ticket-") ||
+      ["staff", "tickets"].includes(parent?.name?.toLowerCase()) ||
+      ["staff", "tickets"].includes(channel.name.toLowerCase());
+    const open = OPEN_NAMES.has(channel.name.toLowerCase()) && !staffOnly;
+    let overwrites = [...(channel.permission_overwrites || [])];
+    overwrites = setOverwrite(
+      overwrites,
+      guildId,
+      open ? bits(P.VIEW, P.HISTORY) : bits(),
+      open ? bits(P.SEND, P.ADD_REACT) : bits(P.VIEW),
+    );
+    for (const roleId of memberIds) {
+      const voice = channel.type === 2 || channel.type === 13;
+      overwrites = setOverwrite(
+        overwrites,
+        roleId,
+        staffOnly ? bits() : bits(P.VIEW, P.HISTORY, ...(voice ? [P.CONNECT, P.SPEAK] : [])),
+        staffOnly ? bits(P.VIEW) : bits(),
+      );
+    }
+    for (const roleId of staffIds) {
+      overwrites = setOverwrite(overwrites, roleId, bits(P.VIEW, P.HISTORY, P.SEND, P.CONNECT, P.SPEAK), bits());
+    }
+    await discord(env, `/channels/${channel.id}`, "PATCH", { permission_overwrites: overwrites });
+    updated += 1;
+    await wait(350);
+  }
+  return { lockedChannels: updated };
+}
+
+function setOverwrite(overwrites, id, allow, deny) {
+  return [...overwrites.filter((item) => item.id !== id), { id, type: 0, allow, deny }];
 }
 
 async function postOnce(env, channelId, body) {
