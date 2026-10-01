@@ -119,17 +119,26 @@ export async function checkGameNews(env, guildId) {
   if (!config.gameRoles || !env.TY) return;
   const saved = JSON.parse((await env.TY.get(`gamenews:${guildId}`)) || "{}");
   const first = !saved.ready;
+  const now = Date.now();
+  const week = 7 * 24 * 60 * 60 * 1000;
   const posts = [];
   for (const game of GAMES) {
     const item = await latestNews(game).catch(() => null);
     if (!item?.id) continue;
-    if (saved[game.key] === item.id) continue;
+    const postedAt = Number(saved[`${game.key}At`] || 0);
+    if (!postedAt) {
+      saved[game.key] = item.id;
+      saved[`${game.key}At`] = now;
+      continue;
+    }
+    if (saved[game.key] === item.id || now - postedAt < week) continue;
     saved[game.key] = item.id;
-    if (!first) posts.push({ game, item });
+    saved[`${game.key}At`] = now;
+    posts.push({ game, item });
   }
   saved.ready = true;
   await env.TY.put(`gamenews:${guildId}`, JSON.stringify(saved));
-  if (!posts.length) return;
+  if (first || !posts.length) return;
   const channelId = await announcementId(env, guildId, config);
   for (const post of posts) {
     const roleId = config.gameRoles[post.game.key];
