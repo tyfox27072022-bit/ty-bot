@@ -3,6 +3,7 @@ import { Client, GatewayIntentBits } from "discord.js";
 import { ensureBoosterRole, syncBooster } from "./booster.js";
 import { COMMANDS } from "./commands.js";
 import { discord } from "./discord.js";
+import { checkGameNews, ensureGameRoles, toggleGameRole } from "./games.js";
 import { processInteraction } from "./index.js";
 import { runSetup } from "./setup.js";
 
@@ -37,13 +38,17 @@ const env = {
   },
 };
 
-const intents = [GatewayIntentBits.Guilds];
+const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageReactions];
 if (process.env.MEMBER_INTENT === "1") intents.push(GatewayIntentBits.GuildMembers);
 const client = new Client({ intents });
 
 client.on("raw", (packet) => {
   if (packet.t === "INTERACTION_CREATE") {
     processInteraction(env, packet.d).catch((error) => console.error("interaction", error));
+    return;
+  }
+  if (packet.t === "MESSAGE_REACTION_ADD" || packet.t === "MESSAGE_REACTION_REMOVE") {
+    toggleGameRole(env, packet.d, packet.t === "MESSAGE_REACTION_ADD").catch((error) => console.error("reaction", error.message));
     return;
   }
   if (packet.t === "GUILD_MEMBER_UPDATE" || packet.t === "GUILD_MEMBER_ADD") {
@@ -78,6 +83,12 @@ async function prepare(guild) {
   }
   const roleId = await ensureBoosterRole(env, guild.id);
   console.log(`server booster role ${roleId}`);
+  await ensureGameRoles(env, guild.id);
+  console.log("game roles ready");
+  checkGameNews(env, guild.id).catch((error) => console.error("game news", error.message));
+  setInterval(() => {
+    checkGameNews(env, guild.id).catch((error) => console.error("game news", error.message));
+  }, 30 * 60 * 1000);
   if (process.env.MEMBER_INTENT !== "1") {
     console.log("booster role is ready; member intent is off so boosts are not watched yet");
     return;

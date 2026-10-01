@@ -115,6 +115,14 @@ export async function runSetup(env, guildId) {
   await channel("welcome", info, 0, "New members start here.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
   await channel("rules", info, 0, "Server rules and Discord policies.", verifyOverwrites);
   await channel("announcements", info, 0, "Official announcements.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
+  await channel("🎯・reaction-roles", info, 0, "React to get pinged for game news.", [
+    everyoneDeny,
+    ow(roles.member, bits(P.VIEW, P.HISTORY, P.ADD_REACT, P.EXT_EMOJI), bits(P.SEND)),
+    ow(roles.yoru, bits(P.VIEW, P.HISTORY, P.ADD_REACT, P.EXT_EMOJI), bits(P.SEND)),
+    staffAllow,
+    ownerAllow,
+    botAllow,
+  ]);
   await channel("verify", info, 0, "Verify to unlock the server.", verifyOverwrites);
   await channel("general", community, 0, "Main chat.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("media", community, 0, "Images, clips, and links.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);

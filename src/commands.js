@@ -25,6 +25,29 @@ export const COMMANDS = [
     default_member_permissions: bits(P.ADMIN),
   },
   {
+    name: "announce",
+    description: "Post game news in announcements and ping that role.",
+    dm_permission: false,
+    default_member_permissions: bits(P.MANAGE_MESSAGES),
+    options: [
+      {
+        type: 3,
+        name: "game",
+        description: "Which game",
+        required: true,
+        choices: [
+          { name: "Fortnite", value: "fortnite" },
+          { name: "Rust", value: "rust" },
+          { name: "COD", value: "cod" },
+          { name: "GTA V", value: "gtav" },
+          { name: "GTA 6", value: "gta6" },
+          { name: "Apex", value: "apex" },
+        ],
+      },
+      str("text", "The update", true),
+    ],
+  },
+  {
     name: "help",
     description: "List Ty Bot commands.",
     dm_permission: false,
@@ -78,7 +101,7 @@ function sub(name, description, options) {
 
 export const HELP = [
   "/setup — build the server",
-  "/logs — Owner role only. DMs a text file of every verification.",
+  "/announce — staff. Posts plain game news in announcements and pings that role.",
   "/lookup @user — staff only. Account age, join date, saved IP, and country.",
   "/mod ban, kick, timeout, untimeout, unban, warn, warnings, clearwarns",
   "/server purge, lock, unlock, slowmode, nick, role, rules, staffrules, embed",
