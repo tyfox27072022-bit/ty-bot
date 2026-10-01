@@ -193,6 +193,8 @@ async function api(request, env, url) {
     const guilds = await discord(env, "/users/@me/guilds");
     return Response.json({ bot: bot.username, guilds });
   }
+  const overview = url.pathname.match(/^\/api\/guilds\/(\d+)$/);
+  if (overview && request.method === "GET") return Response.json(await guildOverview(env, overview[1]));
   const match = url.pathname.match(/^\/api\/guilds\/(\d+)\/(sync|setup|mod|post)$/);
   if (!match || request.method !== "POST") return Response.json({ error: "Not found." }, { status: 404 });
   const guildId = match[1];
@@ -247,6 +249,35 @@ async function sessionOk(request, env) {
 
 function dashboardKey(env) {
   return String(env.DASHBOARD_KEY || "ty_fox07").trim();
+}
+
+async function guildOverview(env, guildId) {
+  const [guild, roles, channels, rules] = await Promise.all([
+    discord(env, `/guilds/${guildId}?with_counts=true`),
+    discord(env, `/guilds/${guildId}/roles`),
+    discord(env, `/guilds/${guildId}/channels`),
+    discord(env, `/guilds/${guildId}/auto-moderation/rules`).catch(() => []),
+  ]);
+  let verifies = 0;
+  if (env.TY?.list) verifies = (await env.TY.list({ prefix: `vuser:${guildId}:` })).keys?.length || 0;
+  const parents = new Map(channels.filter((channel) => channel.type === 4).map((channel) => [channel.id, channel.name]));
+  const kind = { 0: "text", 2: "voice", 4: "category", 5: "news", 13: "stage", 15: "forum" };
+  return {
+    name: guild.name,
+    members: guild.approximate_member_count ?? null,
+    online: guild.approximate_presence_count ?? null,
+    icon: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128` : "",
+    verifies,
+    automod: rules.map((rule) => ({ name: rule.name, enabled: rule.enabled })),
+    roles: roles
+      .filter((role) => role.id !== guildId)
+      .sort((a, b) => b.position - a.position)
+      .map((role) => ({ name: role.name, color: role.color })),
+    channels: channels
+      .filter((channel) => channel.type !== 4)
+      .sort((a, b) => a.position - b.position)
+      .map((channel) => ({ name: channel.name, type: kind[channel.type] || "chat", parent: parents.get(channel.parent_id) || "No category" })),
+  };
 }
 
 async function sign(secret, data) {
