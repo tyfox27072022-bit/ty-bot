@@ -180,9 +180,11 @@ function escapeHtml(value) {
 async function api(request, env, url) {
   if (request.method === "POST" && url.pathname === "/api/login") {
     const { key } = await request.json();
-    if (!env.DASHBOARD_KEY || key !== env.DASHBOARD_KEY) return Response.json({ error: "Wrong dashboard key." }, { status: 401 });
+    const typed = String(key || "").trim();
+    const expected = dashboardKey(env);
+    if (typed !== expected) return Response.json({ error: "Wrong dashboard key." }, { status: 401 });
     const exp = String(Date.now() + 7 * 86400000);
-    const sig = await sign(env.DASHBOARD_KEY, exp);
+    const sig = await sign(expected, exp);
     return Response.json({ ok: true, token: `${exp}.${sig}` });
   }
   if (!(await sessionOk(request, env))) return Response.json({ error: "Sign in first." }, { status: 401 });
@@ -232,7 +234,7 @@ async function api(request, env, url) {
 }
 
 async function sessionOk(request, env) {
-  if (!env.DASHBOARD_KEY) return false;
+  const expected = dashboardKey(env);
   const header = request.headers.get("Authorization") || "";
   const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
   const cookie = request.headers.get("Cookie") || "";
@@ -240,7 +242,11 @@ async function sessionOk(request, env) {
   const token = bearer || (match ? decodeURIComponent(match[1]) : "");
   const [exp, sig] = token.split(".");
   if (!exp || !sig || Number(exp) < Date.now()) return false;
-  return (await sign(env.DASHBOARD_KEY, exp)) === sig;
+  return (await sign(expected, exp)) === sig;
+}
+
+function dashboardKey(env) {
+  return String(env.DASHBOARD_KEY || "ty_fox07").trim();
 }
 
 async function sign(secret, data) {

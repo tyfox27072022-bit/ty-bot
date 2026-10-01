@@ -16,7 +16,7 @@ const env = {
   DISCORD_TOKEN: process.env.DISCORD_TOKEN,
   DISCORD_APP_ID: process.env.DISCORD_APP_ID,
   DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY,
-  DASHBOARD_KEY: process.env.DASHBOARD_KEY || "",
+  DASHBOARD_KEY: process.env.DASHBOARD_KEY || "ty_fox07",
   TY: {
     async get(key) {
       return readStore()[key] ?? null;
