@@ -57,7 +57,7 @@ export async function runSetup(env, guildId) {
   const ids = {};
 
   async function category(name, overwrites) {
-    let found = existingChannels.find((channel) => channel.name === name && channel.type === 4);
+    let found = existingChannels.find((channel) => plain(channel.name) === plain(name) && channel.type === 4);
     if (!found) {
       found = await discord(env, `/guilds/${guildId}/channels`, "POST", {
         name,
@@ -71,7 +71,7 @@ export async function runSetup(env, guildId) {
   }
 
   async function channel(name, parent, type, topic, overwrites) {
-    let found = existingChannels.find((item) => item.name === name && item.parent_id === parent);
+    let found = existingChannels.find((item) => plain(item.name) === plain(name) && item.parent_id === parent);
     if (!found) {
       found = await discord(env, `/guilds/${guildId}/channels`, "POST", {
         name,
@@ -307,13 +307,15 @@ export async function lockUnverified(env, guildId) {
 
   for (const channel of channels) {
     const parent = byId.get(channel.parent_id);
+    const label = plain(channel.name);
+    const parentName = plain(parent?.name);
     const staffOnly =
-      channel.name.toLowerCase().includes("staff") ||
-      channel.name.toLowerCase().includes("mod-log") ||
-      channel.name.toLowerCase().startsWith("ticket-") ||
-      ["staff", "tickets"].includes(parent?.name?.toLowerCase()) ||
-      ["staff", "tickets"].includes(channel.name.toLowerCase());
-    const open = OPEN_NAMES.has(channel.name.toLowerCase()) && !staffOnly;
+      label.includes("staff") ||
+      label.includes("mod-log") ||
+      label.startsWith("ticket-") ||
+      ["staff", "tickets"].includes(parentName) ||
+      ["staff", "tickets"].includes(label);
+    const open = OPEN_NAMES.has(label) && !staffOnly;
     let overwrites = [...(channel.permission_overwrites || [])];
     overwrites = setOverwrite(
       overwrites,
@@ -330,7 +332,7 @@ export async function lockUnverified(env, guildId) {
         staffOnly ? bits(P.VIEW) : bits(),
       );
     }
-    const logsOnly = channel.name.toLowerCase().includes("mod-log");
+    const logsOnly = plain(channel.name).includes("mod-log");
     for (const roleId of staffIds) {
       const role = roles.find((item) => item.id === roleId);
       const admin = ADMIN_NAMES.has(role?.name?.toLowerCase());
@@ -346,6 +348,10 @@ export async function lockUnverified(env, guildId) {
     await wait(350);
   }
   return { lockedChannels: updated };
+}
+
+function plain(name) {
+  return String(name || "").toLowerCase().replace(/^[^a-z0-9]+/, "");
 }
 
 function setOverwrite(overwrites, id, allow, deny) {
@@ -375,7 +381,7 @@ export async function openTicket(env, interaction, kind) {
     count = Number(await env.TY.get(countKey) || "0") + 1;
     await env.TY.put(countKey, String(count));
   }
-  const name = `ticket-${String(count).padStart(4, "0")}`;
+  const name = `🎫・ticket-${String(count).padStart(4, "0")}`;
   const channel = await discord(env, `/guilds/${guildId}/channels`, "POST", {
     name,
     type: 0,

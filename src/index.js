@@ -183,12 +183,7 @@ async function api(request, env, url) {
     if (!env.DASHBOARD_KEY || key !== env.DASHBOARD_KEY) return Response.json({ error: "Wrong dashboard key." }, { status: 401 });
     const exp = String(Date.now() + 7 * 86400000);
     const sig = await sign(env.DASHBOARD_KEY, exp);
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Set-Cookie": `ty_session=${encodeURIComponent(`${exp}.${sig}`)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`,
-      },
-    });
+    return Response.json({ ok: true, token: `${exp}.${sig}` });
   }
   if (!(await sessionOk(request, env))) return Response.json({ error: "Sign in first." }, { status: 401 });
   if (url.pathname === "/api/guilds" && request.method === "GET") {
@@ -238,10 +233,12 @@ async function api(request, env, url) {
 
 async function sessionOk(request, env) {
   if (!env.DASHBOARD_KEY) return false;
+  const header = request.headers.get("Authorization") || "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
   const cookie = request.headers.get("Cookie") || "";
   const match = cookie.match(/(?:^|; )ty_session=([^;]+)/);
-  if (!match) return false;
-  const [exp, sig] = decodeURIComponent(match[1]).split(".");
+  const token = bearer || (match ? decodeURIComponent(match[1]) : "");
+  const [exp, sig] = token.split(".");
   if (!exp || !sig || Number(exp) < Date.now()) return false;
   return (await sign(env.DASHBOARD_KEY, exp)) === sig;
 }

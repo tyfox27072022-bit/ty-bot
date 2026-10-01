@@ -59,16 +59,22 @@ export function dashboardPage() {
   const out = document.getElementById("out");
   const say = (value) => { out.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
   async function api(path, body) {
-    const response = await fetch(path, { method: body ? "POST" : "GET", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+    const headers = {};
+    const token = sessionStorage.getItem("ty_token");
+    if (token) headers.Authorization = "Bearer " + token;
+    if (body) headers["Content-Type"] = "application/json";
+    const response = await fetch(path, { method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || response.statusText);
     return data;
   }
   const loginError = document.getElementById("login-error");
   async function signIn() {
-    loginError.textContent = "";
+    loginError.textContent = "Signing in...";
     try {
-      await api("/api/login", { key: document.getElementById("key").value });
+      const data = await api("/api/login", { key: document.getElementById("key").value });
+      if (!data.token) throw new Error("Sign in failed.");
+      sessionStorage.setItem("ty_token", data.token);
       await boot();
     } catch (error) {
       loginError.textContent = error.message || "Could not sign in.";
