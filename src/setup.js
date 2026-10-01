@@ -131,6 +131,14 @@ export async function runSetup(env, guildId) {
   await channel("General", voice, 2, undefined, [everyoneDeny, ow(roles.member, bits(P.VIEW, P.CONNECT, P.SPEAK), bits()), ow(roles.yoru, bits(P.VIEW, P.CONNECT, P.SPEAK), bits()), staffAllow, ownerAllow, botAllow]);
   await channel("Staff Voice", voice, 2, undefined, [everyoneDeny, staffAllow, ownerAllow, botAllow]);
 
+  const games = await category("🎮 GAME HUB", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🏗️・fortnite", games, 0, "Fortnite talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("☢️・rust", games, 0, "Rust talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🔫・cod", games, 0, "Call of Duty talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🚗・gta-v", games, 0, "GTA V talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🌃・gta-6", games, 0, "GTA 6 talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🔺・apex", games, 0, "Apex Legends talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+
   const config = { roles, channels: ids, ticketCategory: tickets };
   await saveConfig(env, guildId, config);
 
