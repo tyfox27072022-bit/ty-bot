@@ -48,6 +48,28 @@ export const COMMANDS = [
     ],
   },
   {
+    name: "minigames",
+    description: "Play solo games for Yoru Bux.",
+    dm_permission: false,
+  },
+  {
+    name: "2pminigames",
+    description: "Challenge someone to a two-player game.",
+    dm_permission: false,
+    options: [user("user", "Who you want to play")],
+  },
+  {
+    name: "leaderboard",
+    description: "See who has the most Yoru Bux.",
+    dm_permission: false,
+  },
+  {
+    name: "yoru",
+    description: "Check your Yoru Bux.",
+    dm_permission: false,
+    options: [sub("balance", "See your Yoru Bux", [])],
+  },
+  {
     name: "help",
     description: "List Ty Bot commands.",
     dm_permission: false,
@@ -101,7 +123,10 @@ function sub(name, description, options) {
 
 export const HELP = [
   "/setup — build the server",
-  "/announce — staff. Posts plain game news in announcements and pings that role.",
+  "/minigames — solo blackjack, roulette, slots, coinflip, and heist",
+  "/2pminigames @user — rock paper scissors, tic-tac-toe, or high card",
+  "/leaderboard — top Yoru Bux",
+  "/yoru balance — your Yoru Bux",
   "/lookup @user — staff only. Account age, join date, saved IP, and country.",
   "/mod ban, kick, timeout, untimeout, unban, warn, warnings, clearwarns",
   "/server purge, lock, unlock, slowmode, nick, role, rules, staffrules, embed",

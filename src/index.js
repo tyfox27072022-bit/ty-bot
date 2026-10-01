@@ -5,6 +5,7 @@ import { channelTools, moderate } from "./mod.js";
 import { memberRulesEmbed, staffRulesEmbed } from "./rules.js";
 import { closeTicket, openTicket, runSetup } from "./setup.js";
 import { announceGame } from "./games.js";
+import { minigame } from "./minigames.js";
 import { dmVerificationLog, geoFromRequest, grantVerifyRoles, lookupEmbed, makeVerifyToken, readVerifyToken, rememberIp, writeVerifyLog } from "./verify.js";
 
 export default {
@@ -32,7 +33,7 @@ async function interactions(request, env) {
 
 export async function processInteraction(env, interaction, baseUrl) {
   const work = handle(env, interaction, baseUrl).catch((error) => ({ error: error.message || "Command failed." }));
-  await ack(interaction, true);
+  await ack(interaction, hide(interaction));
   const result = await work;
   const payload = {};
   if (result.embeds) payload.embeds = result.embeds;
@@ -55,6 +56,7 @@ async function handle(env, interaction, baseUrl) {
   }
   if (name === "logs") return dmVerificationLog(env, interaction);
   if (name === "announce") return announceGame(env, interaction, map.game, map.text);
+  if (name === "minigames" || name === "2pminigames" || name === "leaderboard" || name === "yoru") return minigame(env, interaction);
   if (name === "setup") {
     const summary = await runSetup(env, interaction.guild_id);
     const extra = summary.automodNotes.length ? `\nAutoMod notes: ${summary.automodNotes.join(" | ")}` : "\nAutoMod rules created.";
@@ -90,7 +92,16 @@ async function component(env, interaction, baseUrl) {
     await closeTicket(env, interaction);
     return { content: "Closing ticket." };
   }
+  if (id.startsWith("mg:") || id.startsWith("p2:")) return minigame(env, interaction);
   return { content: "Unknown button." };
+}
+
+function hide(interaction) {
+  const name = interaction.data?.name || "";
+  const id = interaction.data?.custom_id || "";
+  if (name === "2pminigames" || name === "leaderboard") return false;
+  if (id.startsWith("p2:")) return false;
+  return true;
 }
 
 async function startVerify(env, interaction, kind, baseUrl) {

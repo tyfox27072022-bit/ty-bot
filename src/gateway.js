@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { Client, GatewayIntentBits } from "discord.js";
+import { awardChat } from "./bux.js";
 import { ensureBoosterRole, syncBooster } from "./booster.js";
 import { COMMANDS } from "./commands.js";
 import { discord } from "./discord.js";
@@ -38,13 +39,17 @@ const env = {
   },
 };
 
-const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessageReactions];
+const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions];
 if (process.env.MEMBER_INTENT === "1") intents.push(GatewayIntentBits.GuildMembers);
 const client = new Client({ intents });
 
 client.on("raw", (packet) => {
   if (packet.t === "INTERACTION_CREATE") {
     processInteraction(env, packet.d).catch((error) => console.error("interaction", error));
+    return;
+  }
+  if (packet.t === "MESSAGE_CREATE") {
+    awardChat(env, packet.d).catch((error) => console.error("bux", error.message));
     return;
   }
   if (packet.t === "MESSAGE_REACTION_ADD" || packet.t === "MESSAGE_REACTION_REMOVE") {
