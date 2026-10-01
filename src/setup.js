@@ -128,6 +128,7 @@ export async function runSetup(env, guildId) {
   await channel("media", community, 0, "Images, clips, and links.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("off-topic", community, 0, "Anything else.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("create-a-ticket", support, 0, "Open a private ticket.", [everyoneDeny, memberRead, yoruRead, staffAllow, ownerAllow, botAllow]);
+  await channel("💡・suggestions", support, 0, "Post an idea. A tick from the owner adds it.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("staff-chat", staffCat, 0, "Staff discussion.", [everyoneDeny, staffAllow, ownerAllow, botAllow]);
   await channel("staff-rules", staffCat, 0, "Yoru AI staff rules.", [
     everyoneDeny,

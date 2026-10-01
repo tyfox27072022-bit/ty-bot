@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { Client, GatewayIntentBits } from "discord.js";
+import { acceptSuggestion } from "./suggestions.js";
 import { awardChat } from "./bux.js";
 import { ensureBoosterRole, syncBooster } from "./booster.js";
 import { COMMANDS } from "./commands.js";
@@ -53,6 +54,7 @@ client.on("raw", (packet) => {
     return;
   }
   if (packet.t === "MESSAGE_REACTION_ADD" || packet.t === "MESSAGE_REACTION_REMOVE") {
+    if (packet.t === "MESSAGE_REACTION_ADD") acceptSuggestion(env, packet.d).catch((error) => console.error("suggestion", error.message));
     toggleGameRole(env, packet.d, packet.t === "MESSAGE_REACTION_ADD").catch((error) => console.error("reaction", error.message));
     return;
   }
