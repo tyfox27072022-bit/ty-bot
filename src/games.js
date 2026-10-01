@@ -108,7 +108,8 @@ export async function announceGame(env, interaction, key, text) {
   const roleId = config.gameRoles[game.key];
   const channelId = await announcementId(env, interaction.guild_id, config);
   await discord(env, `/channels/${channelId}/messages`, "POST", {
-    content: `<@&${roleId}>\n${clean}`,
+    content: `<@&${roleId}>`,
+    embeds: [newsEmbed(game, clean)],
     allowed_mentions: { parse: [], roles: [roleId] },
   });
   return { content: `Posted in announcements and pinged ${game.name}.` };
@@ -145,11 +146,21 @@ export async function checkGameNews(env, guildId) {
     if (!roleId) continue;
     const body = [post.item.title, post.item.body, post.item.url].filter(Boolean).join("\n");
     await discord(env, `/channels/${channelId}/messages`, "POST", {
-      content: `<@&${roleId}>\n${body}`.slice(0, 1900),
+      content: `<@&${roleId}>`,
+      embeds: [newsEmbed(post.game, body)],
       allowed_mentions: { parse: [], roles: [roleId] },
     });
     await wait(800);
   }
+}
+
+function newsEmbed(game, text) {
+  return {
+    color: game.color,
+    title: `${game.emoji} ${game.name} update`,
+    description: String(text || "").slice(0, 4000),
+    footer: { text: "Ty Bot" },
+  };
 }
 
 async function announcementId(env, guildId, config) {
