@@ -54,20 +54,26 @@ export async function ensureGameRoles(env, guildId) {
     });
   }
 
+  const embed = {
+    color: 0xd6ff4a,
+    title: "Game pings",
+    description: `React to get pinged in announcements when that game has news.\nReact again to remove the role.\n\n${GAMES.map((game) => `${game.emoji}  ${game.name}`).join("\n")}`,
+    footer: { text: "Ty Bot" },
+  };
   let messageId = config.gamePanel?.messageId;
   if (config.gamePanel?.channelId !== channel.id) messageId = "";
   if (messageId) {
     try {
-      await discord(env, `/channels/${channel.id}/messages/${messageId}`);
+      const existing = await discord(env, `/channels/${channel.id}/messages/${messageId}`);
+      if (!existing.embeds?.length) {
+        await discord(env, `/channels/${channel.id}/messages/${messageId}`, "PATCH", { content: "", embeds: [embed] });
+      }
     } catch {
       messageId = "";
     }
   }
   if (!messageId) {
-    const lines = GAMES.map((game) => `${game.emoji} ${game.name}`);
-    const message = await discord(env, `/channels/${channel.id}/messages`, "POST", {
-      content: `React to get pinged in announcements when that game has news. React again to remove the role.\n\n${lines.join("\n")}`,
-    });
+    const message = await discord(env, `/channels/${channel.id}/messages`, "POST", { embeds: [embed] });
     messageId = message.id;
     for (const game of GAMES) {
       await discord(env, `/channels/${channel.id}/messages/${messageId}/reactions/${encodeURIComponent(game.emoji)}/@me`, "PUT");
