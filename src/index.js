@@ -33,7 +33,7 @@ async function interactions(request, env) {
 
 export async function processInteraction(env, interaction, baseUrl) {
   const work = handle(env, interaction, baseUrl).catch((error) => ({ error: error.message || "Command failed." }));
-  await ack(interaction, hide(interaction));
+  await ack(interaction, responseMode(interaction));
   const result = await work;
   const payload = {};
   if (result.embeds) payload.embeds = result.embeds;
@@ -96,12 +96,14 @@ async function component(env, interaction, baseUrl) {
   return { content: "Unknown button." };
 }
 
-function hide(interaction) {
+function responseMode(interaction) {
   const name = interaction.data?.name || "";
   const id = interaction.data?.custom_id || "";
-  if (name === "2pminigames" || name === "leaderboard") return false;
-  if (id.startsWith("p2:")) return false;
-  return true;
+  if (name === "logs" || name === "lookup") return "ephemeral";
+  if (id === "verify_member" || id === "verify_yoru") return "ephemeral";
+  if (id.startsWith("p2:")) return "update";
+  if (id.startsWith("mg:") && !id.startsWith("mg:open:")) return "update";
+  return "public";
 }
 
 async function startVerify(env, interaction, kind, baseUrl) {

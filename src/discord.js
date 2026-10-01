@@ -75,11 +75,14 @@ export async function discord(env, path, method = "GET", body, attempt = 0) {
   return data;
 }
 
-export async function ack(interaction, ephemeral = true) {
+export async function ack(interaction, mode = "ephemeral") {
+  const body = mode === "update"
+    ? { type: 6 }
+    : { type: 5, data: mode === "ephemeral" ? { flags: 64 } : {} };
   await fetch(`https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: 5, data: ephemeral ? { flags: 64 } : {} }),
+    body: JSON.stringify(body),
   });
 }
 
