@@ -1,5 +1,10 @@
-const queues = new Map();
+const START = 100;
+
+function amountOf(data, userId) {
+  return data[userId] == null ? START : data[userId];
+}
 const recent = new Map();
+const queues = new Map();
 
 function lock(guildId, work) {
   const previous = queues.get(guildId) || Promise.resolve();
@@ -20,13 +25,13 @@ async function write(env, guildId, data) {
 
 export async function balance(env, guildId, userId) {
   const data = await read(env, guildId);
-  return data[userId] || 0;
+  return amountOf(data, userId);
 }
 
 export async function addBux(env, guildId, userId, amount) {
   return lock(guildId, async () => {
     const data = await read(env, guildId);
-    data[userId] = Math.max(0, (data[userId] || 0) + amount);
+    data[userId] = Math.max(0, amountOf(data, userId) + amount);
     await write(env, guildId, data);
     return data[userId];
   });
@@ -35,8 +40,9 @@ export async function addBux(env, guildId, userId, amount) {
 export async function charge(env, guildId, userId, amount) {
   return lock(guildId, async () => {
     const data = await read(env, guildId);
-    if ((data[userId] || 0) < amount) return null;
-    data[userId] -= amount;
+    const current = amountOf(data, userId);
+    if (current < amount) return null;
+    data[userId] = current - amount;
     await write(env, guildId, data);
     return data[userId];
   });
