@@ -115,43 +115,47 @@ export async function announceGame(env, interaction, key, text) {
   return { content: `Posted in announcements and pinged ${game.name}.` };
 }
 
+const UPDATE_DAY = { 1: "rust", 2: "fortnite", 3: "cod", 4: "gtav", 5: "gta6", 6: "apex" };
+
+function londonToday() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type) => parts.find((part) => part.type === type)?.value;
+  const weekday = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }[value("weekday")];
+  return { weekday, date: `${value("year")}-${value("month")}-${value("day")}` };
+}
+
 export async function checkGameNews(env, guildId) {
   const config = await guildConfig(env, guildId);
   if (!config.gameRoles || !env.TY) return;
+  const { weekday, date } = londonToday();
+  const key = UPDATE_DAY[weekday];
+  if (!key) return;
+  const game = GAMES.find((item) => item.key === key);
+  const item = await latestNews(game).catch(() => null);
+  if (!item?.id) return;
   const saved = JSON.parse((await env.TY.get(`gamenews:${guildId}`)) || "{}");
-  const first = !saved.ready;
-  const now = Date.now();
-  const week = 7 * 24 * 60 * 60 * 1000;
-  const posts = [];
-  for (const game of GAMES) {
-    const item = await latestNews(game).catch(() => null);
-    if (!item?.id) continue;
-    const postedAt = Number(saved[`${game.key}At`] || 0);
-    if (!postedAt) {
-      saved[game.key] = item.id;
-      saved[`${game.key}At`] = now;
-      continue;
-    }
-    if (saved[game.key] === item.id || now - postedAt < week) continue;
-    saved[game.key] = item.id;
-    saved[`${game.key}At`] = now;
-    posts.push({ game, item });
-  }
+  const postedAt = Number(saved[`${game.key}At`] || 0);
+  if (saved[game.key] === item.id || date === saved[`${game.key}Day`] || (postedAt && Date.now() - postedAt < 6 * 24 * 60 * 60 * 1000)) return;
+  saved[game.key] = item.id;
+  saved[`${game.key}At`] = Date.now();
+  saved[`${game.key}Day`] = date;
   saved.ready = true;
   await env.TY.put(`gamenews:${guildId}`, JSON.stringify(saved));
-  if (first || !posts.length) return;
+  const roleId = config.gameRoles[game.key];
+  if (!roleId) return;
   const channelId = await announcementId(env, guildId, config);
-  for (const post of posts) {
-    const roleId = config.gameRoles[post.game.key];
-    if (!roleId) continue;
-    const body = [post.item.title, post.item.body, post.item.url].filter(Boolean).join("\n");
-    await discord(env, `/channels/${channelId}/messages`, "POST", {
-      content: `<@&${roleId}>`,
-      embeds: [newsEmbed(post.game, body)],
-      allowed_mentions: { parse: [], roles: [roleId] },
-    });
-    await wait(800);
-  }
+  const body = [item.title, item.body, item.url].filter(Boolean).join("\n");
+  await discord(env, `/channels/${channelId}/messages`, "POST", {
+    content: `<@&${roleId}>`,
+    embeds: [newsEmbed(game, body)],
+    allowed_mentions: { parse: [], roles: [roleId] },
+  });
 }
 
 function newsEmbed(game, text) {
