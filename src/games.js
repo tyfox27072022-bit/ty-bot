@@ -7,6 +7,12 @@ export const GAMES = [
   { key: "gtav", name: "GTA V", emoji: "🚗", color: 0x6db33f, steam: 271590 },
   { key: "gta6", name: "GTA 6", emoji: "🌃", color: 0xf0c14b, steam: null },
   { key: "apex", name: "Apex", emoji: "🔺", color: 0xda292a, steam: 1172470 },
+  { key: "minecraft", name: "Minecraft", emoji: "⛏️", color: 0x5d9c3e, steam: null },
+  { key: "valorant", name: "Valorant", emoji: "🎯", color: 0xff4655, steam: null },
+  { key: "rocketleague", name: "Rocket League", emoji: "🚀", color: 0x1e88e5, steam: null },
+  { key: "roblox", name: "Roblox", emoji: "🧱", color: 0xe2231a, steam: null },
+  { key: "rivals", name: "Marvel Rivals", emoji: "🦸", color: 0x7b2ff7, steam: null },
+  { key: "eafc", name: "EA FC", emoji: "⚽", color: 0x10a37f, steam: null },
 ];
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -65,8 +71,15 @@ export async function ensureGameRoles(env, guildId) {
   if (messageId) {
     try {
       const existing = await discord(env, `/channels/${channel.id}/messages/${messageId}`);
-      if (!existing.embeds?.length) {
+      const current = existing.embeds?.[0]?.description || "";
+      if (current !== embed.description) {
         await discord(env, `/channels/${channel.id}/messages/${messageId}`, "PATCH", { content: "", embeds: [embed] });
+      }
+      const have = new Set((existing.reactions || []).map((reaction) => reaction.emoji?.name));
+      for (const game of GAMES) {
+        if (have.has(game.emoji)) continue;
+        await discord(env, `/channels/${channel.id}/messages/${messageId}/reactions/${encodeURIComponent(game.emoji)}/@me`, "PUT");
+        await wait(250);
       }
     } catch {
       messageId = "";

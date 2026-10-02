@@ -147,6 +147,18 @@ export async function runSetup(env, guildId) {
   await channel("🚗・gta-v", games, 0, "GTA V talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("🌃・gta-6", games, 0, "GTA 6 talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
   await channel("🔺・apex", games, 0, "Apex Legends talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("⛏️・minecraft", games, 0, "Minecraft talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🎯・valorant", games, 0, "Valorant talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🚀・rocket-league", games, 0, "Rocket League talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🧱・roblox", games, 0, "Roblox talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("🦸・marvel-rivals", games, 0, "Marvel Rivals talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+  await channel("⚽・ea-fc", games, 0, "EA FC talk.", [everyoneDeny, memberTalk, yoruTalk, staffAllow, ownerAllow, botAllow]);
+
+  const hang = [everyoneDeny, ow(roles.member, bits(P.VIEW, P.CONNECT, P.SPEAK), bits()), ow(roles.yoru, bits(P.VIEW, P.CONNECT, P.SPEAK), bits()), staffAllow, ownerAllow, botAllow];
+  const hangouts = await category("🎧 HANGOUTS", hang);
+  for (const name of ["🏗️ Fortnite Hangout", "☢️ Rust Hangout", "🔫 COD Hangout", "🚗 GTA V Hangout", "🌃 GTA 6 Hangout", "🔺 Apex Hangout", "⛏️ Minecraft Hangout", "🎯 Valorant Hangout", "🚀 Rocket League Hangout", "🧱 Roblox Hangout", "🦸 Marvel Rivals Hangout", "⚽ EA FC Hangout"]) {
+    await channel(name, hangouts, 2, undefined, hang);
+  }
 
   const config = { roles, channels: ids, ticketCategory: tickets };
   await saveConfig(env, guildId, config);
