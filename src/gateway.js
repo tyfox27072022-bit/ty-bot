@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { Client, GatewayIntentBits } from "discord.js";
+import { ActivityType, Client, GatewayIntentBits } from "discord.js";
 import { acceptSuggestion } from "./suggestions.js";
 import { awardChat } from "./bux.js";
 import { ensureBoosterRole, syncBooster } from "./booster.js";
@@ -42,7 +42,10 @@ const env = {
 
 const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions];
 if (process.env.MEMBER_INTENT === "1") intents.push(GatewayIntentBits.GuildMembers);
-const client = new Client({ intents });
+const client = new Client({
+  intents,
+  presence: { status: "online", activities: [{ name: "Yoru Lounge", type: ActivityType.Watching }] },
+});
 
 client.on("raw", (packet) => {
   if (packet.t === "INTERACTION_CREATE") {
@@ -68,11 +71,15 @@ client.on("raw", (packet) => {
 
 client.once("ready", async () => {
   console.log(`online as ${client.user.tag} in ${client.guilds.cache.size} server(s)`);
+  client.user.setPresence({ status: "online", activities: [{ name: "Yoru Lounge", type: ActivityType.Watching }] });
   for (const guild of client.guilds.cache.values()) {
     await prepare(guild);
   }
 });
 
+client.on("error", (error) => console.error("gateway error", error.message));
+client.on("shardDisconnect", () => console.error("gateway disconnected"));
+client.on("shardReconnecting", () => console.log("gateway reconnecting"));
 client.on("guildCreate", (guild) => {
   prepare(guild).catch((error) => console.error("join", error));
 });
