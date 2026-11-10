@@ -79,19 +79,30 @@ export async function ack(interaction, mode = "ephemeral") {
   const body = mode === "update"
     ? { type: 6 }
     : { type: 5, data: mode === "ephemeral" ? { flags: 64 } : {} };
-  await fetch(`https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`, {
+  const response = await fetch(`https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "User-Agent": "TyBot (https://github.com/tyfox27072022-bit/ty-bot, 1.0)" },
     body: JSON.stringify(body),
   });
+  if (!response.ok && response.status !== 204) {
+    const text = await response.text();
+    throw new Error(`ack ${response.status} ${text.slice(0, 180)}`);
+  }
 }
 
 export async function editOriginal(env, token, payload) {
-  await fetch(`https://discord.com/api/v10/webhooks/${env.DISCORD_APP_ID}/${token}/messages/@original`, {
+  const response = await fetch(`https://discord.com/api/v10/webhooks/${env.DISCORD_APP_ID}/${token}/messages/@original`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "TyBot (https://github.com/tyfox27072022-bit/ty-bot, 1.0)",
+    },
     body: JSON.stringify(payload),
   });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`edit ${response.status} ${text.slice(0, 180)}`);
+  }
 }
 
 export function optionMap(interaction) {

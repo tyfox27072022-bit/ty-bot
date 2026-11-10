@@ -49,6 +49,8 @@ const client = new Client({
 
 client.on("raw", (packet) => {
   if (packet.t === "INTERACTION_CREATE") {
+    const name = packet.d?.data?.name || packet.d?.data?.custom_id || packet.d?.type;
+    console.log("interaction", name);
     processInteraction(env, packet.d).catch((error) => console.error("interaction", error));
     return;
   }
@@ -78,7 +80,15 @@ client.once("ready", async () => {
 });
 
 client.on("error", (error) => console.error("gateway error", error.message));
-client.on("shardDisconnect", () => console.error("gateway disconnected"));
+client.on("shardDisconnect", () => {
+  console.error("gateway disconnected");
+  setTimeout(() => {
+    if (!client.isReady()) {
+      console.error("still disconnected, restarting");
+      process.exit(1);
+    }
+  }, 20000);
+});
 client.on("shardReconnecting", () => console.log("gateway reconnecting"));
 client.on("guildCreate", (guild) => {
   prepare(guild).catch((error) => console.error("join", error));

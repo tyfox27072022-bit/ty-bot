@@ -32,9 +32,8 @@ async function interactions(request, env) {
 }
 
 export async function processInteraction(env, interaction, baseUrl) {
-  const work = handle(env, interaction, baseUrl).catch((error) => ({ error: error.message || "Command failed." }));
   await ack(interaction, responseMode(interaction));
-  const result = await work;
+  const result = await handle(env, interaction, baseUrl).catch((error) => ({ error: error.message || "Command failed." }));
   const payload = {};
   if (result.embeds) payload.embeds = result.embeds;
   if (result.components) payload.components = result.components;
